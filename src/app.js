@@ -8,7 +8,7 @@ const swaggerUi   = require('swagger-ui-express');
 const swaggerSpec = require('./swagger/config');
 
 const app = express();
-app.set('trust proxy', 1); // Necesario para express-rate-limit en Render
+app.set('trust proxy', 1); // Necesario para express-rate-limit en Render 
 
 app.use(helmet({
   contentSecurityPolicy: {
