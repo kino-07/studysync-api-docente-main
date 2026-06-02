@@ -1,10 +1,7 @@
-// src/db.js
-// Singleton de PrismaClient — una sola instancia reutilizada en toda la app
-// Evita "too many connections" en entornos con hot-reload (nodemon, Serverless)
-
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = global.__prisma ?? new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL,
   log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
 });
 
