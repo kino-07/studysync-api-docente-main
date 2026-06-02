@@ -1,71 +1,127 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Iniciar sesión — StudySync</title>
-  <link rel="stylesheet" href="/app.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biblioteca — Iniciar sesión</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card {
+      background: white; border-radius: 12px;
+      padding: 40px; width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; margin-bottom: 8px; color: #1a1a2e; }
+    .subtitulo { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 28px; }
+
+    label { font-size: 0.85rem; font-weight: 600; color: #444; display: block; margin-bottom: 5px; }
+    input {
+      width: 100%; padding: 10px 14px; margin-bottom: 16px;
+      border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem;
+    }
+    input:focus { outline: none; border-color: #1a1a2e; }
+
+    button {
+      width: 100%; padding: 12px; background: #1a1a2e; color: white;
+      border: none; border-radius: 6px; cursor: pointer;
+      font-size: 1rem; font-weight: 600;
+    }
+    button:hover { background: #2d2d5e; }
+
+    #mensaje {
+      margin-top: 14px; padding: 12px; border-radius: 6px;
+      font-size: 0.9rem; text-align: center; display: none;
+    }
+    #mensaje.exito { background: #d4edda; color: #155724; }
+    #mensaje.error { background: #f8d7da; color: #721c24; }
+
+    .link { text-align: center; margin-top: 16px; font-size: 0.88rem; color: #666; }
+    .link a { color: #1a1a2e; font-weight: 600; text-decoration: none; }
+
+    .rol-info {
+      display: none; text-align: center; margin-top: 12px;
+      padding: 8px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+    }
+  </style>
 </head>
 <body>
-  <div class="auth-wrapper">
-    <div class="auth-box">
-      <h1>StudySync</h1>
-      <p>Inicia sesión para gestionar tus sesiones de estudio</p>
+<div class="card">
+  <h2>📚 Biblioteca</h2>
+  <p class="subtitulo">Iniciar sesión</p>
 
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="tu@email.com" />
-      </div>
-      <div class="form-group">
-        <label for="password">Contraseña</label>
-        <input id="password" type="password" placeholder="••••••••"
-               onkeydown="if(event.key==='Enter') login()" />
-      </div>
+  <label>Correo electrónico</label>
+  <input type="email" id="email" placeholder="tucorreo@upds.edu.bo">
 
-      <button class="btn btn-primary" style="width:100%" onclick="login()">
-        Iniciar sesión
-      </button>
+  <label>Contraseña</label>
+  <input type="password" id="password" placeholder="Tu contraseña">
 
-      <div id="msg" class="msg"></div>
+  <button onclick="login()">Ingresar</button>
 
-      <p class="auth-footer">
-        ¿Sin cuenta? <a href="/register.html" class="link">Regístrate aquí</a>
-      </p>
-    </div>
+  <div class="rol-info" id="rolInfo"></div>
+  <div id="mensaje"></div>
+
+  <div class="link">
+    ¿No tienes cuenta? <a href="/register.html">Regístrate aquí</a>
   </div>
+</div>
 
-  <script>
-    async function login() {
-      const email    = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const msg      = document.getElementById('msg');
+<script>
+  async function login() {
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
 
-      msg.className = 'msg';
-      msg.textContent = '';
-
-      try {
-        const res = await fetch('/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          msg.className = 'msg error';
-          msg.textContent = data.error || 'Credenciales inválidas.';
-          return;
-        }
-
-        // Guardar el token en sessionStorage (expira cuando cierra el navegador)
-        sessionStorage.setItem('token', data.token);
-        sessionStorage.setItem('usuario', JSON.stringify(data.usuario));
-        window.location.href = '/';
-      } catch (e) {
-        msg.className = 'msg error';
-        msg.textContent = 'No se pudo conectar con el servidor.';
-      }
+    if (!email || !password) {
+      mostrarMensaje('Completa todos los campos.', 'error');
+      return;
     }
-  </script>
+
+    const res  = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      mostrarMensaje(data.error, 'error');
+      return;
+    }
+
+    // Guardar token y datos del usuario
+    localStorage.setItem('token',   data.token);
+    localStorage.setItem('usuario', JSON.stringify(data.usuario));
+
+    const rol     = data.usuario.rol;
+    const rolInfo = document.getElementById('rolInfo');
+    rolInfo.style.display = 'block';
+
+    if (rol === 'ADMIN') {
+      rolInfo.style.background = '#d4edda';
+      rolInfo.style.color      = '#155724';
+      rolInfo.textContent      = '👑 Bienvenido, Administrador';
+      mostrarMensaje('Redirigiendo al panel de control...', 'exito');
+      setTimeout(() => { window.location.href = '/index.html'; }, 1500);
+    } else {
+      rolInfo.style.background = '#cce5ff';
+      rolInfo.style.color      = '#004085';
+      rolInfo.textContent      = '🎓 Bienvenido, Estudiante';
+      mostrarMensaje('Redirigiendo...', 'exito');
+      setTimeout(() => { window.location.href = '/estudiante.html'; }, 1500);
+    }
+  }
+
+  function mostrarMensaje(texto, tipo) {
+    const msg = document.getElementById('mensaje');
+    msg.textContent   = texto;
+    msg.className     = tipo;
+    msg.style.display = 'block';
+  }
+</script>
 </body>
 </html>

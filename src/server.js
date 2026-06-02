@@ -1,9 +1,9 @@
 // src/server.js
 require('dotenv').config({ quiet: true });
-const http    = require('http');
+const http       = require('http');
 const { Server } = require('socket.io');
-const app     = require('./app');
-require('./redis/client'); // inicia conexiones pub/sub al arrancar
+const app        = require('./app');
+require('./redis/client');
 
 const servidor = http.createServer(app);
 
@@ -15,16 +15,19 @@ const io = new Server(servidor, {
 const { iniciarSuscripciones } = require('./subscribers/notificaciones');
 iniciarSuscripciones(io);
 
+// Iniciar job de verificación de vencimientos
+const { iniciarJob } = require('./jobs/verificarVencimientos');
+iniciarJob(io);
+
 io.on('connection', (socket) => {
   console.log(`[WS] Cliente conectado: ${socket.id}`);
   socket.on('disconnect', () => console.log(`[WS] Cliente desconectado: ${socket.id}`));
 });
 
-// Render asigna process.env.PORT automáticamente — nunca fijar un puerto fijo aquí
 const PORT = process.env.PORT || 3000;
 servidor.listen(PORT, () => {
   console.log('═══════════════════════════════════════════');
-  console.log(`  StudySync API + WebSocket · puerto ${PORT}`);
+  console.log(`  Biblioteca API + WebSocket · puerto ${PORT}`);
   console.log(`  Modo: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  Docs: /api-docs`);
   console.log('═══════════════════════════════════════════');

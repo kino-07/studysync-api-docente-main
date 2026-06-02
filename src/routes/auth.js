@@ -1,20 +1,16 @@
 // src/routes/auth.js
-// Rutas de autenticación: registro e inicio de sesión con Supabase via Prisma
-
-const express  = require('express');
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const router   = express.Router();
-const prisma   = require('../db');
+const express = require('express');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const router  = express.Router();
+const prisma  = require('../db');
 
 // ── POST /auth/register ───────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   const { nombre, email, password } = req.body;
 
   if (!nombre || !email || !password) {
-    return res.status(400).json({
-      error: 'Los campos nombre, email y password son obligatorios'
-    });
+    return res.status(400).json({ error: 'Los campos nombre, email y password son obligatorios' });
   }
 
   if (password.length < 6) {
@@ -26,17 +22,22 @@ router.post('/register', async (req, res) => {
     return res.status(409).json({ error: `El email ${email} ya está registrado` });
   }
 
-  // bcrypt.hash genera un hash irreversible con 12 rondas de sal
+  // Si no existe ningún usuario → el primero es ADMIN
+  const totalUsuarios = await prisma.usuario.count();
+  const rol = totalUsuarios === 0 ? 'ADMIN' : 'ESTUDIANTE';
+
   const hashPassword = await bcrypt.hash(password, 12);
 
   const nuevoUsuario = await prisma.usuario.create({
-    data: { nombre, email, password: hashPassword },
-    select: { id: true, nombre: true, email: true, creadoEn: true }
+    data: { nombre, email, password: hashPassword, rol },
+    select: { id: true, nombre: true, email: true, rol: true, creadoEn: true }
   });
 
   res.status(201).json({
     ok: true,
-    mensaje: 'Usuario registrado exitosamente',
+    mensaje: rol === 'ADMIN'
+      ? '¡Administrador creado! Eres el primer usuario del sistema.'
+      : 'Estudiante registrado exitosamente.',
     usuario: nuevoUsuario
   });
 });
@@ -51,7 +52,6 @@ router.post('/login', async (req, res) => {
 
   const usuario = await prisma.usuario.findUnique({ where: { email } });
 
-  // Mensaje genérico — no revelar si el email existe o no (seguridad)
   if (!usuario) {
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
@@ -62,7 +62,7 @@ router.post('/login', async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: usuario.id, email: usuario.email, nombre: usuario.nombre },
+    { id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
   );
@@ -70,7 +70,7 @@ router.post('/login', async (req, res) => {
   res.json({
     ok: true,
     token,
-    usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email }
+    usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol }
   });
 });
 
