@@ -1,20 +1,12 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-// ── Roles posibles ────────────────────────────────────────────────────────────
 enum Rol {
   ADMIN
   ESTUDIANTE
 }
 
-// ── Tabla de usuarios ─────────────────────────────────────────────────────────
 model Usuario {
   id         Int        @id @default(autoincrement())
   nombre     String
@@ -27,12 +19,11 @@ model Usuario {
   @@map("usuarios")
 }
 
-// ── Tabla de préstamos ────────────────────────────────────────────────────────
 model Prestamo {
   id               Int       @id @default(autoincrement())
   libroTitulo      String    @map("libro_titulo")
   libroAutor       String    @default("Desconocido") @map("libro_autor")
-  diasPrestamo     Int       @map("dias_prestamo")        // 7, 14 o 30
+  diasPrestamo     Int       @map("dias_prestamo")
   fechaPrestamo    DateTime  @default(now()) @map("fecha_prestamo")
   fechaVencimiento DateTime  @map("fecha_vencimiento")
   devuelto         Boolean   @default(false)
