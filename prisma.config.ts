@@ -1,5 +1,5 @@
-import { defineConfig } from 'prisma/config';
+const { defineConfig } = require('prisma/config');
 
-export default defineConfig({
+module.exports = defineConfig({
   datasourceUrl: process.env.DATABASE_URL,
 });
