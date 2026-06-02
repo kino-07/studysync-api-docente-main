@@ -45,18 +45,16 @@ const crear = async (req, res) => {
     });
   }
 
-  const dias = parseInt(diasPrestamo);
-  if (![7, 14, 30].includes(dias)) {
-    return res.status(400).json({
-      error: 'diasPrestamo debe ser 7, 14 o 30',
-      diasValidos: [7, 14, 30]
-    });
-  }
+const dias = parseInt(diasPrestamo);
+if (!dias || dias < 1) {
+  return res.status(400).json({ error: 'diasPrestamo debe ser un número positivo' });
+}
 
   // Calcular fecha de vencimiento
-  const fechaPrestamo    = new Date();
-  const fechaVencimiento = new Date();
-  fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
+const fechaPrestamo = new Date();
+const fechaVencimiento = req.body.fechaVencimiento
+  ? new Date(req.body.fechaVencimiento)
+  : new Date(fechaPrestamo.getTime() + dias * 24 * 60 * 60 * 1000);
 
   const nuevoPrestamo = await prisma.prestamo.create({
     data: {

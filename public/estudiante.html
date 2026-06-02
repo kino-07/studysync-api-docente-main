@@ -132,21 +132,8 @@
         <input type="text" id="libroAutor" placeholder="Ej: Stewart">
       </div>
       <div>
-        <label>Duración del préstamo</label>
-        <div class="dias-grid">
-          <div class="dia-opcion" onclick="seleccionarDias(7, this)">
-            <div class="numero">7</div>
-            <div class="texto">días</div>
-          </div>
-          <div class="dia-opcion seleccionado" onclick="seleccionarDias(14, this)">
-            <div class="numero">14</div>
-            <div class="texto">días</div>
-          </div>
-          <div class="dia-opcion" onclick="seleccionarDias(30, this)">
-            <div class="numero">30</div>
-            <div class="texto">días</div>
-          </div>
-        </div>
+        <label>Fecha y hora de devolución</label>
+        <input type="datetime-local" id="fechaVencimiento" style="width:100%; padding:10px 14px; border:1px solid #ddd; border-radius:6px; font-size:0.9rem;">
       </div>
     </div>
     <button id="btnPrestar" onclick="crearPrestamo()">Registrar préstamo</button>
@@ -180,7 +167,7 @@
 <script>
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
   const token   = localStorage.getItem('token');
-  let diasSeleccionados = 14;
+  
 
   // Verificar que está autenticado
   if (!token || !usuario.id) {
@@ -189,11 +176,6 @@
 
   document.getElementById('estudianteNombre').textContent = usuario.nombre || '';
 
-  function seleccionarDias(dias, el) {
-    diasSeleccionados = dias;
-    document.querySelectorAll('.dia-opcion').forEach(d => d.classList.remove('seleccionado'));
-    el.classList.add('seleccionado');
-  }
 
   function logout() {
     localStorage.clear();
@@ -201,120 +183,57 @@
   }
 
   // ── Crear préstamo ────────────────────────────────────────────────────────
-  async function crearPrestamo() {
-    const libroTitulo = document.getElementById('libroTitulo').value.trim();
-    const libroAutor  = document.getElementById('libroAutor').value.trim();
+ async function crearPrestamo() {
+  const libroTitulo     = document.getElementById('libroTitulo').value.trim();
+  const libroAutor      = document.getElementById('libroAutor').value.trim();
+  const fechaVencimiento = document.getElementById('fechaVencimiento').value;
 
-    if (!libroTitulo) {
-      mostrarMsg('El título del libro es obligatorio.', 'error');
-      return;
-    }
-
-    const res  = await fetch('/api/prestamos', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        libroTitulo,
-        libroAutor:   libroAutor || 'Desconocido',
-        diasPrestamo: diasSeleccionados
-      })
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      mostrarMsg(data.error, 'error');
-      return;
-    }
-
-    mostrarMsg(`✓ Préstamo registrado. Vence el ${new Date(data.fechaVencimiento).toLocaleDateString('es-BO')}`, 'exito');
-    document.getElementById('libroTitulo').value = '';
-    document.getElementById('libroAutor').value  = '';
-    cargarMisPrestamos();
+  if (!libroTitulo) {
+    mostrarMsg('El título del libro es obligatorio.', 'error');
+    return;
   }
 
-  function mostrarMsg(texto, tipo) {
-    const msg = document.getElementById('msgPrestamo');
-    msg.textContent   = texto;
-    msg.className     = tipo;
-    msg.style.display = 'block';
-    setTimeout(() => { msg.style.display = 'none'; }, 4000);
+  if (!fechaVencimiento) {
+    mostrarMsg('Debes elegir una fecha y hora de devolución.', 'error');
+    return;
   }
 
-  // ── Cargar mis préstamos ──────────────────────────────────────────────────
-  async function cargarMisPrestamos() {
-    const res  = await fetch('/api/prestamos');
-    const data = await res.json();
-
-    const todos    = data.datos || [];
-    const misPrest = todos.filter(p => p.estudiante.id === usuario.id);
-    const tbody    = document.getElementById('tablaPrestamos');
-    const ahora    = new Date();
-
-    tbody.innerHTML = '';
-
-    if (misPrest.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#999;">No tienes préstamos registrados aún.</td></tr>';
-      return;
-    }
-
-    misPrest.forEach(p => {
-      const vence       = new Date(p.fechaVencimiento);
-      const horasRest   = Math.ceil((vence - ahora) / (1000 * 60 * 60));
-      const estaVencido = !p.devuelto && vence < ahora;
-      const estaProximo = !p.devuelto && horasRest <= 24 && horasRest > 0;
-
-      let badgeClass, badgeTexto;
-      if (p.devuelto)       { badgeClass = 'devuelto'; badgeTexto = 'Devuelto'; }
-      else if (estaVencido) { badgeClass = 'vencido';  badgeTexto = 'Vencido';  }
-      else if (estaProximo) { badgeClass = 'proximo';  badgeTexto = `Vence en ${horasRest}h`; }
-      else                  { badgeClass = 'activo';   badgeTexto = 'Activo';   }
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${p.id}</td>
-        <td>${p.libroTitulo}</td>
-        <td>${p.libroAutor}</td>
-        <td>${p.diasPrestamo} días</td>
-        <td>${new Date(p.fechaPrestamo).toLocaleString('es-BO')}</td>
-        <td>${vence.toLocaleString('es-BO')}</td>
-        <td><span class="badge ${badgeClass}">${badgeTexto}</span></td>
-      `;
-      tbody.appendChild(tr);
-    });
+  const ahora = new Date();
+  const vence = new Date(fechaVencimiento);
+  if (vence <= ahora) {
+    mostrarMsg('La fecha de devolución debe ser futura.', 'error');
+    return;
   }
 
-  // ── Socket.io — alertas en tiempo real ───────────────────────────────────
-  const socket = io();
+  // Calcular días entre hoy y la fecha elegida
+  const dias = Math.ceil((vence - ahora) / (1000 * 60 * 60 * 24));
 
-  socket.on('alerta-vencimiento', (evento) => {
-    if (evento.payload.prestamo.estudianteId === usuario.id) {
-      mostrarAlerta(evento.payload.mensaje, false);
-      cargarMisPrestamos();
-    }
+  const res = await fetch('/api/prestamos', {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      libroTitulo,
+      libroAutor:      libroAutor || 'Desconocido',
+      diasPrestamo:    dias,
+      fechaVencimiento: vence.toISOString()
+    })
   });
+  const data = await res.json();
 
-  socket.on('alerta-vencido', (evento) => {
-    if (evento.payload.prestamo.estudianteId === usuario.id) {
-      mostrarAlerta(evento.payload.mensaje, true);
-      cargarMisPrestamos();
-    }
-  });
-
-  function mostrarAlerta(mensaje, esVencido) {
-    const box = document.getElementById('alertaBox');
-    const ul  = document.getElementById('listaAlertas');
-    box.style.display = 'block';
-    const li = document.createElement('li');
-    if (esVencido) li.classList.add('vencido');
-    li.textContent = `[${new Date().toLocaleTimeString()}] ${mensaje}`;
-    ul.prepend(li);
+  if (!res.ok) {
+    mostrarMsg(data.error, 'error');
+    return;
   }
 
-  // Cargar al iniciar
+  mostrarMsg(`✓ Préstamo registrado. Vence el ${vence.toLocaleString('es-BO')}`, 'exito');
+  document.getElementById('libroTitulo').value = '';
+  document.getElementById('libroAutor').value  = '';
+  document.getElementById('fechaVencimiento').value = '';
   cargarMisPrestamos();
+}
 </script>
 </body>
 </html>
