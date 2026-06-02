@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registrarse — StudySync</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-box">
+      <h1>StudySync</h1>
+      <p>Crea tu cuenta para coordinar sesiones de estudio</p>
+
+      <div class="form-group">
+        <label for="nombre">Nombre completo</label>
+        <input id="nombre" type="text" placeholder="Ej. Jimmy Requena" />
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="tu@email.com" />
+      </div>
+      <div class="form-group">
+        <label for="password">Contraseña (mín. 6 caracteres)</label>
+        <input id="password" type="password" placeholder="••••••••" />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%" onclick="registrar()">
+        Crear cuenta
+      </button>
+
+      <div id="msg" class="msg"></div>
+
+      <p class="auth-footer">
+        ¿Ya tienes cuenta? <a href="/login.html" class="link">Inicia sesión</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    async function registrar() {
+      const nombre   = document.getElementById('nombre').value.trim();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const msg      = document.getElementById('msg');
+
+      msg.className = 'msg';
+      msg.textContent = '';
+
+      if (!nombre || !email || !password) {
+        msg.className = 'msg error';
+        msg.textContent = 'Completa todos los campos.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, email, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          msg.className = 'msg error';
+          msg.textContent = data.error || 'Error al registrar.';
+          return;
+        }
+
+        msg.className = 'msg ok';
+        msg.textContent = `¡Cuenta creada! Redirigiendo al login...`;
+        setTimeout(() => window.location.href = '/login.html', 1500);
+      } catch (e) {
+        msg.className = 'msg error';
+        msg.textContent = 'No se pudo conectar con el servidor.';
+      }
+    }
+  </script>
+</body>
+</html>

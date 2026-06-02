@@ -1,0 +1,43 @@
+// prisma/schema.prisma
+// Define la estructura de la base de datos — Prisma genera el cliente TypeSafe a partir de esto
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl permite conexiones directas (sin pooler) para migraciones
+  directUrl = env("DIRECT_URL")
+}
+
+// ── Tabla de usuarios ─────────────────────────────────────────────────────────
+model Usuario {
+  id         Int       @id @default(autoincrement())
+  nombre     String
+  email      String    @unique
+  password   String    // Hash bcrypt — nunca el texto plano
+  creadoEn   DateTime  @default(now()) @map("creado_en")
+  sesiones   Sesion[]  // Relación: un usuario puede tener muchas sesiones
+
+  @@map("usuarios") // Nombre real de la tabla en PostgreSQL
+}
+
+// ── Tabla de sesiones de estudio ──────────────────────────────────────────────
+model Sesion {
+  id           Int       @id @default(autoincrement())
+  titulo       String
+  descripcion  String    @default("")
+  materia      String    @default("General")
+  fechaHora    DateTime  @default(now()) @map("fecha_hora")
+  completada   Boolean   @default(false)
+  creadaEn     DateTime  @default(now()) @map("creada_en")
+  actualizadaEn DateTime? @updatedAt @map("actualizada_en")
+
+  // Clave foránea — cada sesión pertenece a un usuario
+  autorId      Int       @map("autor_id")
+  autor        Usuario   @relation(fields: [autorId], references: [id])
+
+  @@map("sesiones")
+}

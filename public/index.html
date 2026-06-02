@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudySync — Panel de Sesiones</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>StudySync</h1>
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <span id="usuario-nombre" style="font-size:0.875rem;color:var(--muted)"></span>
+        <span id="ws-badge" class="badge">⬤ Conectando...</span>
+        <button class="btn btn-danger btn-sm" onclick="logout()">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+
+      <!-- Crear sesión -->
+      <div class="card">
+        <h2>Nueva sesión de estudio</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group">
+            <label>Título *</label>
+            <input id="inp-titulo" type="text" placeholder="Ej. Redis Pub/Sub" />
+          </div>
+          <div class="form-group">
+            <label>Materia</label>
+            <input id="inp-materia" type="text" placeholder="Ej. Prog IV" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group">
+            <label>Descripción</label>
+            <input id="inp-desc" type="text" placeholder="Tema o notas opcionales" />
+          </div>
+          <div class="form-group">
+            <label>Fecha y hora</label>
+            <input id="inp-fecha" type="datetime-local" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="crearSesion()">+ Crear sesión</button>
+        <div id="msg-crear" class="msg"></div>
+      </div>
+
+      <!-- Lista de sesiones -->
+      <div class="card">
+        <h2>Sesiones registradas</h2>
+        <ul id="lista-sesiones">
+          <li style="color:var(--muted);font-size:0.875rem;">Cargando sesiones...</li>
+        </ul>
+      </div>
+
+      <!-- Feed de eventos en tiempo real -->
+      <div class="card">
+        <h2>Eventos en tiempo real (Socket.io)</h2>
+        <ul id="eventos-feed">
+          <li style="color:var(--muted)">Esperando eventos...</li>
+        </ul>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Socket.io client (servido automáticamente por el servidor) -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ── Verificar autenticación ───────────────────────────────────────────────
+    const token   = sessionStorage.getItem('token');
+    const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
+
+    if (!token) {
+      window.location.href = '/login.html';
+    }
+
+    if (usuario) {
+      document.getElementById('usuario-nombre').textContent =
+        `Hola, ${usuario.nombre}`;
+    }
+
+    // ── Socket.io — conexión en tiempo real ───────────────────────────────────
+    const socket = io({ transports: ['websocket', 'polling'] });
+
+    socket.on('connect', () => {
+      const badge = document.getElementById('ws-badge');
+      badge.textContent = '🟢 Conectado';
+      badge.classList.add('connected');
+    });
+
+    socket.on('disconnect', () => {
+      const badge = document.getElementById('ws-badge');
+      badge.textContent = '🔴 Desconectado';
+      badge.classList.remove('connected');
+    });
+
+    socket.on('nuevo-evento', (data) => {
+      const feed = document.getElementById('eventos-feed');
+      // Limpiar mensaje inicial
+      if (feed.querySelector('li[style]')) feed.innerHTML = '';
+
+      const li = document.createElement('li');
+      const hora = new Date(data.timestamp).toLocaleTimeString('es-BO');
+      li.innerHTML = `<span class="evento-tipo">${data.tipo}</span>${data.payload?.titulo || ''} · ${hora}`;
+      feed.prepend(li);
+    });
+
+    // ── API — helpers ─────────────────────────────────────────────────────────
+    const API = {
+      headers: () => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+      }),
+
+      async get(url) {
+        const r = await fetch(url);
+        return r.json();
+      },
+
+      async post(url, body) {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: this.headers(),
+          body: JSON.stringify(body),
+        });
+        return { ok: r.ok, data: await r.json() };
+      },
+
+      async delete(url) {
+        const r = await fetch(url, { method: 'DELETE', headers: this.headers() });
+        return r.ok;
+      },
+    };
+
+    // ── Cargar sesiones ───────────────────────────────────────────────────────
+    async function cargarSesiones() {
+      const { datos } = await API.get('/api/sesiones');
+      const lista = document.getElementById('lista-sesiones');
+
+      if (!datos || datos.length === 0) {
+        lista.innerHTML = '<li style="color:var(--muted);font-size:0.875rem;">No hay sesiones aún. ¡Crea la primera!</li>';
+        return;
+      }
+
+      lista.innerHTML = datos.map(s => `
+        <li>
+          <div class="sesion-info">
+            <h3>${s.titulo}</h3>
+            <span>📚 ${s.materia}</span>
+            <span>🕒 ${new Date(s.fechaHora).toLocaleString('es-BO')}</span>
+            ${s.completada ? '<span style="color:var(--success)">✔ Completada</span>' : ''}
+          </div>
+          <div class="sesion-acciones">
+            <button class="btn btn-danger btn-sm" onclick="eliminarSesion(${s.id})">Eliminar</button>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    // ── Crear sesión ──────────────────────────────────────────────────────────
+    async function crearSesion() {
+      const titulo = document.getElementById('inp-titulo').value.trim();
+      const msg    = document.getElementById('msg-crear');
+
+      if (!titulo) {
+        msg.className = 'msg error';
+        msg.textContent = 'El título es obligatorio.';
+        return;
+      }
+
+      const body = {
+        titulo,
+        materia:     document.getElementById('inp-materia').value.trim() || undefined,
+        descripcion: document.getElementById('inp-desc').value.trim()    || undefined,
+        fechaHora:   document.getElementById('inp-fecha').value          || undefined,
+      };
+
+      const { ok, data } = await API.post('/api/sesiones', body);
+      if (!ok) {
+        msg.className = 'msg error';
+        msg.textContent = data.error || 'Error al crear sesión.';
+        return;
+      }
+
+      msg.className = 'msg ok';
+      msg.textContent = `Sesión "${data.titulo}" creada exitosamente.`;
+      document.getElementById('inp-titulo').value  = '';
+      document.getElementById('inp-materia').value = '';
+      document.getElementById('inp-desc').value    = '';
+      document.getElementById('inp-fecha').value   = '';
+      cargarSesiones();
+
+      setTimeout(() => { msg.className = 'msg'; }, 3000);
+    }
+
+    // ── Eliminar sesión ───────────────────────────────────────────────────────
+    async function eliminarSesion(id) {
+      if (!confirm(`¿Eliminar la sesión #${id}?`)) return;
+      const ok = await API.delete(`/api/sesiones/${id}`);
+      if (ok) cargarSesiones();
+    }
+
+    // ── Logout ────────────────────────────────────────────────────────────────
+    function logout() {
+      sessionStorage.clear();
+      window.location.href = '/login.html';
+    }
+
+    // Cargar al iniciar
+    cargarSesiones();
+  </script>
+</body>
+</html>

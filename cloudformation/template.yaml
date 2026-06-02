@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  StudySync - Infraestructura AWS simulada con LocalStack.
+  Crea un bucket S3 para adjuntos, una tabla DynamoDB para eventos
+  y un parámetro SSM con la URL de la API.
+
+# ── Parámetros configurables al desplegar ─────────────────────────────────────
+Parameters:
+  Ambiente:
+    Type: String
+    Default: development
+    AllowedValues: [development, staging, production]
+    Description: Entorno de despliegue
+
+  ApiUrl:
+    Type: String
+    Default: http://localhost:3000
+    Description: URL base de la StudySync API
+
+# ── Recursos a crear ───────────────────────────────────────────────────────────
+Resources:
+
+  # ── S3 Bucket para adjuntos de sesiones ─────────────────────────────────────
+  # Los estudiantes podrían subir PDFs, imágenes de apuntes, etc.
+  BucketAdjuntos:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "studysync-adjuntos-${Ambiente}"
+      # Versioning guarda historial de cada archivo (permite recuperar versiones anteriores)
+      VersioningConfiguration:
+        Status: Enabled
+      # CORS permite que el frontend haga uploads directos desde el navegador
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  # ── DynamoDB para registro de eventos en tiempo real ─────────────────────────
+  # DynamoDB es una base de datos NoSQL clave-valor — ideal para logs y eventos
+  # porque escala automáticamente y tiene latencia de milisegundos
+  TablaEventos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "studysync-eventos-${Ambiente}"
+      # BillingMode PAY_PER_REQUEST = sin capacidad provisionada, pagas por consulta
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: eventId     # Identificador único del evento
+          AttributeType: S           # S = String
+        - AttributeName: timestamp   # Marca de tiempo del evento
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH              # Partition key (equivale al ID principal)
+        - AttributeName: timestamp
+          KeyType: RANGE             # Sort key (ordena registros dentro del mismo partition)
+      # TTL automáticamente elimina eventos viejos para ahorrar espacio
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Proyecto
+          Value: StudySync
+        - Key: Ambiente
+          Value: !Ref Ambiente
+
+  # ── SSM Parameter Store para configuración centralizada ──────────────────────
+  # SSM Parameter Store guarda configuración y secrets de forma centralizada.
+  # Las aplicaciones leen el parámetro en lugar de tener la URL hardcodeada.
+  ParametroApiUrl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/studysync/${Ambiente}/api-url"
+      Type: String
+      Value: !Ref ApiUrl
+      Description: URL base de la StudySync API para el ambiente indicado
+
+# ── Outputs — valores exportados tras el despliegue ───────────────────────────
+# Permiten referenciar estos recursos desde otros stacks de CloudFormation
+Outputs:
+  BucketNombre:
+    Description: Nombre del bucket S3 para adjuntos
+    Value: !Ref BucketAdjuntos
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketAdjuntos"
+
+  TablaEventosArn:
+    Description: ARN de la tabla DynamoDB de eventos
+    Value: !GetAtt TablaEventos.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TablaEventos"
+
+  ParametroApiUrlPath:
+    Description: Ruta del parámetro SSM con la URL de la API
+    Value: !Ref ParametroApiUrl

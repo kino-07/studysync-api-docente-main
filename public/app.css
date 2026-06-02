@@ -1,0 +1,185 @@
+/* public/app.css — Estilos globales de StudySync */
+
+:root {
+  --primary:   #6366f1;
+  --primary-h: #4f46e5;
+  --danger:    #ef4444;
+  --success:   #22c55e;
+  --bg:        #0f172a;
+  --surface:   #1e293b;
+  --border:    #334155;
+  --text:      #f1f5f9;
+  --muted:     #94a3b8;
+  --radius:    10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0;
+}
+header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+header h1 { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+header .badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--muted);
+}
+header .badge.connected { background: #14532d; color: var(--success); }
+
+main { padding: 2rem 0; }
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Formularios ────────────────────────────────────────────────────────── */
+.form-group { margin-bottom: 1rem; }
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group textarea:focus { border-color: var(--primary); }
+.form-group textarea { resize: vertical; min-height: 70px; }
+
+/* ── Botones ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s, opacity 0.2s;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-h); }
+.btn-danger  { background: var(--danger);  color: #fff; }
+.btn-danger:hover  { opacity: 0.85; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+
+/* ── Lista de sesiones ──────────────────────────────────────────────────── */
+#lista-sesiones { list-style: none; }
+#lista-sesiones li {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+#lista-sesiones .sesion-info h3 { font-size: 0.95rem; margin-bottom: 0.25rem; }
+#lista-sesiones .sesion-info span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-right: 0.75rem;
+}
+#lista-sesiones .sesion-acciones { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+/* ── Feed de eventos ────────────────────────────────────────────────────── */
+#eventos-feed {
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+#eventos-feed li {
+  font-size: 0.82rem;
+  color: var(--muted);
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+#eventos-feed li:last-child { border-bottom: none; }
+#eventos-feed li .evento-tipo {
+  color: var(--primary);
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* ── Mensajes de estado ─────────────────────────────────────────────────── */
+.msg {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+  display: none;
+}
+.msg.ok    { background: #14532d; color: var(--success); display: block; }
+.msg.error { background: #450a0a; color: var(--danger);  display: block; }
+
+/* ── Auth pages ─────────────────────────────────────────────────────────── */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.auth-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+.auth-box h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  color: var(--primary);
+}
+.auth-box p { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+.auth-box .link { color: var(--primary); text-decoration: none; }
+.auth-footer { margin-top: 1rem; font-size: 0.875rem; color: var(--muted); text-align: center; }
