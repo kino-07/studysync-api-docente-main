@@ -21,7 +21,6 @@
 
     .container { max-width: 900px; margin: 24px auto; padding: 0 24px; }
 
-    /* Alerta de vencimiento */
     #alertaBox {
       background: #fff3cd; border: 1px solid #ffc107;
       border-radius: 8px; padding: 16px; margin-bottom: 24px; display: none;
@@ -34,7 +33,6 @@
     }
     #listaAlertas li.vencido { border-left-color: #e74c3c; background: #fff5f5; }
 
-    /* Formulario nuevo préstamo */
     .card {
       background: white; border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 24px; margin-bottom: 24px;
@@ -42,7 +40,7 @@
     .card h2 { font-size: 1.1rem; margin-bottom: 20px; }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .form-full  { grid-column: 1 / -1; }
+    .form-full { grid-column: 1 / -1; }
 
     label { font-size: 0.85rem; font-weight: 600; color: #444; display: block; margin-bottom: 5px; }
     input {
@@ -50,18 +48,6 @@
       border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem;
     }
     input:focus { outline: none; border-color: #1a1a2e; }
-
-    .dias-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-    }
-    .dia-opcion {
-      border: 2px solid #ddd; border-radius: 8px;
-      padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s;
-    }
-    .dia-opcion:hover { border-color: #1a1a2e; }
-    .dia-opcion.seleccionado { border-color: #1a1a2e; background: #1a1a2e; color: white; }
-    .dia-opcion .numero { font-size: 1.4rem; font-weight: 700; }
-    .dia-opcion .texto  { font-size: 0.75rem; margin-top: 2px; }
 
     #btnPrestar {
       margin-top: 20px; width: 100%; padding: 12px;
@@ -77,7 +63,6 @@
     #msgPrestamo.exito { background: #d4edda; color: #155724; }
     #msgPrestamo.error { background: #f8d7da; color: #721c24; }
 
-    /* Tabla mis préstamos */
     table { width: 100%; border-collapse: collapse; }
     thead { background: #f8f9fa; }
     th, td { padding: 11px 14px; text-align: left; font-size: 0.85rem; border-bottom: 1px solid #eee; }
@@ -99,32 +84,38 @@
       background: #1a1a2e; color: white; border: none;
       padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
     }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      header { padding: 12px 16px; }
+      .container { padding: 0 12px; }
+      table { font-size: 0.78rem; }
+      th, td { padding: 8px 10px; }
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>📚 Biblioteca — Mi cuenta</h1>
-  <div style="display:flex; align-items:center; gap:16px;">
+  <h1>📚 Biblioteca</h1>
+  <div style="display:flex; align-items:center; gap:12px;">
     <span id="estudianteNombre" style="font-size:0.9rem; opacity:0.8;"></span>
-    <button id="btnLogout" onclick="logout()">Cerrar sesión</button>
+    <button id="btnLogout" onclick="logout()">Salir</button>
   </div>
 </header>
 
 <div class="container">
 
-  <!-- Alertas en tiempo real -->
   <div id="alertaBox">
     <h3>⚠ Alertas de vencimiento</h3>
     <ul id="listaAlertas"></ul>
   </div>
 
-  <!-- Formulario nuevo préstamo -->
   <div class="card">
     <h2>📖 Registrar nuevo préstamo</h2>
     <div class="form-grid">
       <div class="form-full">
-        <label>Título del libro</label>
+        <label>Título del libro *</label>
         <input type="text" id="libroTitulo" placeholder="Ej: Cálculo Diferencial">
       </div>
       <div>
@@ -132,15 +123,14 @@
         <input type="text" id="libroAutor" placeholder="Ej: Stewart">
       </div>
       <div>
-        <label>Fecha y hora de devolución</label>
-        <input type="datetime-local" id="fechaVencimiento" style="width:100%; padding:10px 14px; border:1px solid #ddd; border-radius:6px; font-size:0.9rem;">
+        <label>Fecha y hora de devolución *</label>
+        <input type="datetime-local" id="fechaVencimiento">
       </div>
     </div>
     <button id="btnPrestar" onclick="crearPrestamo()">Registrar préstamo</button>
     <div id="msgPrestamo"></div>
   </div>
 
-  <!-- Mis préstamos -->
   <div class="card">
     <div class="card-header">
       <h2>📋 Mis préstamos</h2>
@@ -152,8 +142,7 @@
           <th>#</th>
           <th>Libro</th>
           <th>Autor</th>
-          <th>Días</th>
-          <th>Fecha préstamo</th>
+          <th>Préstamo</th>
           <th>Vence</th>
           <th>Estado</th>
         </tr>
@@ -167,73 +156,152 @@
 <script>
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
   const token   = localStorage.getItem('token');
-  
 
-  // Verificar que está autenticado
   if (!token || !usuario.id) {
     window.location.href = '/login.html';
   }
 
   document.getElementById('estudianteNombre').textContent = usuario.nombre || '';
 
+  // Establecer mínimo de fecha como ahora
+  const ahora = new Date();
+  ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
+  document.getElementById('fechaVencimiento').min = ahora.toISOString().slice(0, 16);
 
   function logout() {
     localStorage.clear();
     window.location.href = '/login.html';
   }
 
-  // ── Crear préstamo ────────────────────────────────────────────────────────
- async function crearPrestamo() {
-  const libroTitulo     = document.getElementById('libroTitulo').value.trim();
-  const libroAutor      = document.getElementById('libroAutor').value.trim();
-  const fechaVencimiento = document.getElementById('fechaVencimiento').value;
+  async function crearPrestamo() {
+    const libroTitulo      = document.getElementById('libroTitulo').value.trim();
+    const libroAutor       = document.getElementById('libroAutor').value.trim();
+    const fechaVencStr     = document.getElementById('fechaVencimiento').value;
 
-  if (!libroTitulo) {
-    mostrarMsg('El título del libro es obligatorio.', 'error');
-    return;
+    if (!libroTitulo) {
+      mostrarMsg('El título del libro es obligatorio.', 'error');
+      return;
+    }
+
+    if (!fechaVencStr) {
+      mostrarMsg('Debes elegir una fecha y hora de devolución.', 'error');
+      return;
+    }
+
+    const fechaVencimiento = new Date(fechaVencStr);
+    const ahora            = new Date();
+
+    if (fechaVencimiento <= ahora) {
+      mostrarMsg('La fecha de devolución debe ser futura.', 'error');
+      return;
+    }
+
+    const dias = Math.ceil((fechaVencimiento - ahora) / (1000 * 60 * 60 * 24));
+
+    const res  = await fetch('/api/prestamos', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        libroTitulo,
+        libroAutor:       libroAutor || 'Desconocido',
+        diasPrestamo:     dias,
+        fechaVencimiento: fechaVencimiento.toISOString()
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      mostrarMsg(data.error || 'Error al registrar préstamo', 'error');
+      return;
+    }
+
+    mostrarMsg(`✓ Préstamo registrado. Vence el ${fechaVencimiento.toLocaleString('es-BO')}`, 'exito');
+    document.getElementById('libroTitulo').value      = '';
+    document.getElementById('libroAutor').value       = '';
+    document.getElementById('fechaVencimiento').value = '';
+    cargarMisPrestamos();
   }
 
-  if (!fechaVencimiento) {
-    mostrarMsg('Debes elegir una fecha y hora de devolución.', 'error');
-    return;
+  function mostrarMsg(texto, tipo) {
+    const msg = document.getElementById('msgPrestamo');
+    msg.textContent   = texto;
+    msg.className     = tipo;
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 4000);
   }
 
-  const ahora = new Date();
-  const vence = new Date(fechaVencimiento);
-  if (vence <= ahora) {
-    mostrarMsg('La fecha de devolución debe ser futura.', 'error');
-    return;
+  async function cargarMisPrestamos() {
+    const res  = await fetch('/api/prestamos');
+    const data = await res.json();
+
+    const todos    = data.datos || [];
+    const misPrest = todos.filter(p => p.estudiante.id === usuario.id);
+    const tbody    = document.getElementById('tablaPrestamos');
+    const ahora    = new Date();
+
+    tbody.innerHTML = '';
+
+    if (misPrest.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#999;">No tienes préstamos registrados aún.</td></tr>';
+      return;
+    }
+
+    misPrest.forEach(p => {
+      const vence       = new Date(p.fechaVencimiento);
+      const horasRest   = Math.ceil((vence - ahora) / (1000 * 60 * 60));
+      const estaVencido = !p.devuelto && vence < ahora;
+      const estaProximo = !p.devuelto && horasRest <= 24 && horasRest > 0;
+
+      let badgeClass, badgeTexto;
+      if (p.devuelto)       { badgeClass = 'devuelto'; badgeTexto = 'Devuelto'; }
+      else if (estaVencido) { badgeClass = 'vencido';  badgeTexto = 'Vencido';  }
+      else if (estaProximo) { badgeClass = 'proximo';  badgeTexto = `Vence en ${horasRest}h`; }
+      else                  { badgeClass = 'activo';   badgeTexto = 'Activo';   }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.id}</td>
+        <td>${p.libroTitulo}</td>
+        <td>${p.libroAutor}</td>
+        <td>${new Date(p.fechaPrestamo).toLocaleString('es-BO')}</td>
+        <td>${vence.toLocaleString('es-BO')}</td>
+        <td><span class="badge ${badgeClass}">${badgeTexto}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
-  // Calcular días entre hoy y la fecha elegida
-  const dias = Math.ceil((vence - ahora) / (1000 * 60 * 60 * 24));
+  const socket = io();
 
-  const res = await fetch('/api/prestamos', {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      libroTitulo,
-      libroAutor:      libroAutor || 'Desconocido',
-      diasPrestamo:    dias,
-      fechaVencimiento: vence.toISOString()
-    })
+  socket.on('alerta-vencimiento', (evento) => {
+    if (evento.payload.prestamo.estudianteId === usuario.id) {
+      mostrarAlerta(evento.payload.mensaje, false);
+      cargarMisPrestamos();
+    }
   });
-  const data = await res.json();
 
-  if (!res.ok) {
-    mostrarMsg(data.error, 'error');
-    return;
+  socket.on('alerta-vencido', (evento) => {
+    if (evento.payload.prestamo.estudianteId === usuario.id) {
+      mostrarAlerta(evento.payload.mensaje, true);
+      cargarMisPrestamos();
+    }
+  });
+
+  function mostrarAlerta(mensaje, esVencido) {
+    const box = document.getElementById('alertaBox');
+    const ul  = document.getElementById('listaAlertas');
+    box.style.display = 'block';
+    const li = document.createElement('li');
+    if (esVencido) li.classList.add('vencido');
+    li.textContent = `[${new Date().toLocaleTimeString()}] ${mensaje}`;
+    ul.prepend(li);
   }
 
-  mostrarMsg(`✓ Préstamo registrado. Vence el ${vence.toLocaleString('es-BO')}`, 'exito');
-  document.getElementById('libroTitulo').value = '';
-  document.getElementById('libroAutor').value  = '';
-  document.getElementById('fechaVencimiento').value = '';
   cargarMisPrestamos();
-}
 </script>
 </body>
 </html>
